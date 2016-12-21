@@ -41,7 +41,7 @@ function edd_ga_ua_ecom_payment_receipt_after_table($payment, $edd_receipt_args)
 				  'affiliation': '<?php echo esc_js(get_bloginfo('name')); ?>', // Affiliation or store name.
 				  'revenue': '<?php echo $grand_total ? esc_js($grand_total) : '0'; ?>', // Grand Total.
 				  'shipping': '0', // Shipping.
-				  'tax': '<?php echo edd_use_taxes() ? esc_js(edd_payment_tax( $payment->ID )) : '0'; ?>' // Tax.
+				  'tax': '<?php echo edd_use_taxes() ? esc_js(edd_get_payment_tax( $payment->ID )) : '0'; ?>', // Tax.
 				});
 			
 		<?php if ( $edd_receipt_args[ 'products' ] ) {
