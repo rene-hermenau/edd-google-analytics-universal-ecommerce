@@ -20,7 +20,97 @@
  * 
  */
 
-function edd_ga_ua_ecom_payment_receipt_after_table($payment, $edd_receipt_args) {
+if (!defined( 'EDD_GA_UA_TYPE'))
+   define( 'EDD_GA_UA_TYPE', 'gtag' ); // gtag or ga
+
+function edd_ga_ua_ecom_init($payment, $edd_receipt_args){
+   if (EDD_GA_UA_TYPE === 'gtag'){
+      echo edd_ga_ua_ecom_load_gtag($payment, $edd_receipt_args);
+   }else {
+      echo edd_ga_ua_ecom_load_ga($payment, $edd_receipt_args);
+   }
+}
+add_action('edd_payment_receipt_after_table', 'edd_ga_ua_ecom_init', 10, 2);
+
+/**
+ * 
+ * @param array $payment
+ * @param array $edd_receipt_args
+ * @return string
+ */
+function edd_ga_ua_ecom_load_gtag($payment, $edd_receipt_args) {
+	
+	if ( $edd_receipt_args['payment_id'] ) {
+		// Use a meta value so we only send the beacon once.
+		if (get_post_meta( $payment->ID, 'edd_ga_beacon_sent', true)) {
+			return;
+		}
+		
+		$grand_total = edd_get_payment_amount( $payment->ID );
+		
+		?>
+		<script type="text/javascript">
+
+		if (typeof gtag != "undefined") {
+			
+			gtag('ecommerce:event', 'purchase',  {
+				  'transaction_id': '<?php echo esc_js(edd_get_payment_number( $payment->ID )); ?>', // Transaction ID. Required.
+				  'affiliation': '<?php echo esc_js(get_bloginfo('name')); ?>', // Affiliation or store name.
+				  'value': '<?php echo $grand_total ? esc_js($grand_total) : '0'; ?>', // Grand Total.
+				  'currency': 'EUR',
+				  'shipping': '0', // Shipping.
+				  'tax': '<?php echo edd_use_taxes() ? esc_js(edd_get_payment_tax( $payment->ID )) : '0'; ?>', // Tax.
+                              "items": [
+                                 {
+                                   <?php echo edd_ga_ua_ecom_gte_items($payment, $edd_receipt_args); ?> 
+                                 }
+                              ]
+                           });
+                          }
+		</script>
+		<?php 
+		
+		update_post_meta( $payment->ID, 'edd_ga_beacon_sent', true );
+		
+	}
+	
+}
+
+function edd_ga_ua_ecom_gte_items($payment, $edd_receipt_args) {
+   
+   if( $edd_receipt_args['products'] ) {
+      $cart = edd_get_payment_meta_cart_details( $payment->ID, true );
+      if( $cart ) {
+         foreach ( $cart as $key => $item ) {
+            if( empty( $item['in_bundle'] ) ) {
+
+               $price_id = edd_get_cart_item_price_id( $item );
+               $itemname = $item['name'];
+               if( !is_null( $price_id ) ) {
+                  $itemname .= ' - ' . edd_get_price_option_name( $item['id'], $price_id );
+               }
+               ?>
+               					
+             'id': '<?php echo esc_js( edd_get_payment_number( $payment->ID ) ); ?>', // Transaction ID. Required.
+             'name': '<?php echo esc_js( $itemname ); ?>',  // Product name. Required.
+             'sku': '<?php echo esc_js( edd_use_skus() ? edd_get_download_sku( $item['id'] ) : $item['id'] ); ?>', // SKU/code.
+             'price': '<?php echo esc_js( $item['item_price'] ); ?>', // Unit price.
+             'quantity': '<?php echo esc_js( $item['quantity'] ); ?>' // Quantity.
+               <?php
+            }
+         }
+      }
+   }
+   
+}
+
+/**
+ * 
+ * @param type $payment
+ * @param type $edd_receipt_args
+ * @return type
+ */
+function edd_ga_ua_ecom_load_ga($payment, $edd_receipt_args) {
 	
 	if ( $edd_receipt_args['payment_id'] ) {
 		// Use a meta value so we only send the beacon once.
@@ -83,6 +173,5 @@ function edd_ga_ua_ecom_payment_receipt_after_table($payment, $edd_receipt_args)
 	
 }
 
-add_action('edd_payment_receipt_after_table', 'edd_ga_ua_ecom_payment_receipt_after_table', 10, 2);
 
 ?>
